@@ -25,7 +25,7 @@ PLUGIN_CONFIG = {
     'password': 'guest',
     'host': 'localhost',
     'port': 15672,
-    'realm': 'RabbitMQ Management'
+    'realm': None
 }
 
 def configure(config_values):
@@ -88,18 +88,18 @@ def dispatch_values(values, host, plugin, plugin_instance, metric_type,
       type_instance: Optional
     '''
 
-    collectd.debug("Dispatching %s %s %s %s %s\n\t%s " % (host, plugin,
-	plugin_instance, metric_type, type_instance, values))
+    collectd.debug("Dispatching %s %s %s %s %s\n\t%s " % (host, plugin, 
+        plugin_instance, metric_type, type_instance, values))
 
     metric = collectd.Values()
     if host:
-    	metric.host = host
+        metric.host = host
     metric.plugin = plugin
     if plugin_instance:
         metric.plugin_instance = plugin_instance
     metric.type = metric_type
     if type_instance:
-    	metric.type_instance = type_instance
+        metric.type_instance = type_instance
     metric.values = values
     metric.dispatch()
 
@@ -109,7 +109,7 @@ def dispatch_message_stats(data, vhost, plugin, plugin_instance):
         return
 
     for name in MESSAGE_STATS:
-    	dispatch_values((data.get(name,0),), vhost, plugin, plugin_instance, name)
+        dispatch_values((data.get(name,0),), vhost, plugin, plugin_instance, name)
 
 def dispatch_queue_metrics(queue, vhost):
     '''
@@ -125,11 +125,11 @@ def dispatch_queue_metrics(queue, vhost):
         values= (queue.get(name, 0),)
         dispatch_values(values, vhost_name, 'queues', queue['name'], 'rabbitmq_%s' % name)
 
-	details = queue.get("%s_details" % name, None)
-	values = list()
-	for detail in MESSAGE_DETAIL:
-		values.append (details.get(detail,0))
-	dispatch_values(values, vhost_name, 'queues', queue['name'], 'rabbitmq_details', name)
+    details = queue.get("%s_details" % name, None)
+    values = list()
+    for detail in MESSAGE_DETAIL:
+        values.append (details.get(detail,0))
+    dispatch_values(values, vhost_name, 'queues', queue['name'], 'rabbitmq_details', name)
 
     dispatch_message_stats(queue.get('message_stats',None), vhost_name, 'queues', queue['name'])
 
@@ -146,7 +146,7 @@ def dispatch_node_metrics(node):
     '''
 
     for name in NODE_STATS:
-    	dispatch_values((node.get(name,0),), node['name'].split('@')[1], 'rabbitmq', None, name )
+        dispatch_values((node.get(name,0),), node['name'].split('@')[1], 'rabbitmq', None, name )
 
 
 def want_to_ignore(type_rmq, name):
@@ -168,12 +168,13 @@ def read(input_data=None):
     base_url = RABBIT_API_URL.format(host = PLUGIN_CONFIG['host'],
                 port = PLUGIN_CONFIG['port'])
 
-    auth_handler = urllib2.HTTPBasicAuthHandler()
-    auth_handler.add_password(realm = PLUGIN_CONFIG['realm'],
-                uri = base_url,
-                user = PLUGIN_CONFIG['username'],
-                passwd = PLUGIN_CONFIG['password'])
-    opener = urllib2.build_opener(auth_handler)
+    password_mgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
+    password_mgr.add_password(realm = PLUGIN_CONFIG['realm'],
+                              uri = base_url,
+                              user = PLUGIN_CONFIG['username'],
+                              passwd = PLUGIN_CONFIG['password'])
+    handler = urllib2.HTTPBasicAuthHandler(password_mgr)
+    opener = urllib2.build_opener(handler)
     urllib2.install_opener(opener)
 
     #First get all the nodes
